@@ -2,8 +2,8 @@
 # This makefile builds an executable file for
 # offline intertial sdk running under Linux
 #
-GAMP_DIR=.
-TARGET_DIR=.
+GAMP_DIR=GOOD_src
+TARGET_DIR=bin
 
 #get all cpp files in specified directories
 SOURCE = $(wildcard $(GAMP_DIR)/*.cpp) \
@@ -12,11 +12,11 @@ SOURCE = $(wildcard $(GAMP_DIR)/*.cpp) \
 OBJS = $(patsubst %.cpp,%.o,$(SOURCE))
 
 INC=-I$(GAMP_DIR)
-CFLAGS= -O3 -std=c++11 -o
+CFLAGS= -O3 -std=c++11 -o 
 
-CC=/usr/bin/g++
+CC=g++
 RM=/bin/rm
-TARGET=run_GOOD
+TARGET=run_GAMP_GOOD
 
 build_cmd: $(OBJS)
 	$(CC) $(INC) $^ -o $(TARGET_DIR)/$(TARGET)
