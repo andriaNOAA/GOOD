@@ -1,295 +1,193 @@
 #!/usr/bin/env python
 # coding:utf-8
 
-
-################################################################################
-# PROGRAM: 
-################################################################################
-"""
-
- To run GOOD software for GNSS observations and products downloading
-
- UsagD: python run_GOOD.py -dir_main <dir_main_path> -time <yyyy> <doy> <ndays> -ftp <FTP_archieve> -obs <data_type> <source> <site_list> <start_hour> <nhours> 
-           -nav <data_type> <nav_type> <source> <site_list> <start_hour> <nhours> -orbclk <source> <start_hour> <nhours> -eop <source> <start_hour> <nhours> 
-           -eop <source> <start_hour> <nhours> -obx <source> -dsb <source> -snx -ion <source> -roti -trop <source> <site_list> -atx
-
- OPTIONS:
-   <-dir_main>     - The root/main directory of GNSS observations and products storage, i.e., '-dir_main D:\data' under Windows or 
-                      '-dir_main /home/zhouforme/data' under Linux/Mac
-   <-time>         - time setting, 1st: 4-digit year, 2nd: day of year, 3rd: number of consecutive days, i.e., '-time 2022 32 3'
-   <-ftp>          - FTP archieve, i.e., '-ftp cddis', '-ftp whu', or '-ftp ign'
-   <-obs>          - [optional] GNSS observation data downloading option:
-                      1st <data_type>: 'daily', 'hourly', 'highrate', '30s', '5s', or '1s';
-                      2nd <source>: 'igs', 'mgex', 'igm', 'cut', 'ga', 'hk', 'ngs', 'epn', 'pbo2', 'pbo3', or 'pbo5';
-                      3rd <site_list>: 'all' (observation files downloaded in the whole remote directory) or the full path of 
-                         site list (observation files downloaded site-by-site according to the site list file);
-                      4th <start_hour>: Start hour (00, 01, 02, ...);
-                      5th <nhours>: the consecutive hours, i.e., '01  3' denotes 01, 02, and 03.
-                      i.e., '-obs daily igs D:\data\site_igs.list 0 24' or '-obs daily igs all 0 24'
-   <-nav>          - [optional] various broadcast ephemeris downloading option:
-                      1st <data_type>: 'daily' or 'hourly';
-                      2nd <nav_type>: 'gps', 'glo', 'bds', 'gal', 'qzs', 'irn', 'mixed3', 'mixed4', or 'all';
-                      3rd <source>: 'igs', 'dlr', 'ign', 'gop', or 'wrd';
-                      4th <start_hour>: Start hour (00, 01, 02, ...);
-                      5th <nhours>: the consecutive hours, i.e., '01  3' denotes 01, 02, and 03.
-                      i.e., '-nav daily mixed3 igs D:\data\site_igs.list 0 3' or '-nav daily gps dlr D:\data\site_igs.list 0 3'
-   <-orbclk>       - [optional] satellite final/rapid/ultra-rapid precise orbit and clock downloading option:
-                      1st <source>: IGS final: 'cod', 'emr', 'esa', 'gfz', 'grg', 'igs', 'jpl', 'mit', 'all', 'cod+igs', 'cod+gfz+igs', ...; 
-                         MGEX final: 'cod_m', 'gfz_m', 'grg_m', 'whu_m', 'all_m', 'cod_m+gfz_m', 'grg_m+whu_m', ...; 
-                         rapid: 'cod_r', 'emr_r', 'esa_r', 'gfz_r', 'igs_r'; 
-                         ultra-rapid: 'esa_u', 'gfz_u', 'igs_u', 'whu_u'; 
-                         real-timD: 'cnt';
-                      2nd <start_hour>: Start hour (00, 06, 12, or 18 for esa_u and igs_u; 00, 03, 06, ... for gfz_u; 01, 02, 03, ... for whu_u);
-                      3rd <nhours>: the consecutive sessions, i.e., '00  3' denotes 00, 06, and 12 for esa_u and/or igs_u, 00, 03, and 06 for gfz_u, 
-                         while 00, 01, and 02 for whu_u.
-                      i.e., '-orbclk igs 0 3' or '-orbclk igs+cod+cod_m 0 3'
-   <-eop>          - [optional] Earth rotation/orientation parameter (ERP/EOP) downloading option:
-                      1st <source>: final: 'cod', 'emr', 'esa', 'gfz', 'grg', 'igs', 'jpl', 'mit'; 
-                         ultra-rapid: 'esa_u', 'gfz_u', 'igs_u';
-                      2nd <start_hour>: Start hour (00, 06, 12, or 18 for esa_u and igs_u; 00, 03, 06, ... for gfz_u);
-                      3rd <nhours>: the consecutive sessions, i.e., '00  3' denotes 00, 06, and 12 for esa_u and/or igs_u, 00, 03, and 06 for gfz_u.
-                      i.e., '-eop igs 0 3' or '-eop igs_u 0 3'
-   <-obx>          - [optional] ORBEX (ORBit EXchange format) for satellite attitude information downloading option:
-                      1st <source>: final/rapid: 'cod_m', 'gfz_m', 'grg_m', 'whu_m', 'all_m'; 
-                         real-time: 'cnt'
-   <-dsb>          - [optional] Differential code/signal bias (DCB/DSB) downloading option:
-                      1st <source>: 'cod', 'cas', 'all'
-   <-snx>          - [optional] IGS weekly SINEX downloading option
-   <-ion>          - [optional] Global ionosphere map (GIM) downloading option:
-                      1st <source>: final: 'cas', 'cod', 'emr', 'esa', 'igs', 'jpl', 'upc', 'all', 'cas+cod', 'cas+cod+igs', ...; 
-                         rapid: 'cas_r', cod_r', 'esa_r', 'igs_r', 'jpl_r', 'upc_r', 'all_r', 'cas_r+cod_r', 'cas_r+cod_r+igs_r', ...; 
-                         hourly rapid: 'emr_hr', 'upc_hr'; 
-                         15-min rapid: 'upc_0.25hr'; 
-                         predicted: 'cod_1d', 'cod_2d'
-   <-roti>         - [optional] Rate of TEC index (ROTI) downloading option
-   <-trop>         - [optional] CODE/IGS tropospheric product downloading option:
-                      1st <source>: 'igs' or 'cod';
-                      2nd <site_list>: 'all' (observation files downloaded in the whole remote directory) or the full path of 
-                         site list (observation files downloaded site-by-site according to the site list file).
-   <-atx>          - [optional] ANTEX format antenna phase center correction downloading option
-
-EXAMPLES: python run_GOOD.py -dir_main D:\data -time 2022 32 3 -ftp cddis -obs daily igs site_igs.list 0 24
-          python run_GOOD.py -dir_main D:\data -time 2022 32 3 -ftp cddis -obs highrate igs site_igs.list 0 24
-          python run_GOOD.py -dir_main D:\data -time 2022 32 3 -ftp whu -nav daily mixed3 igs 0 24
-          python run_GOOD.py -dir_main D:\data -time 2022 32 3 -ftp whu -orbclk igs 0 24 -eop igs 0 24
-          python run_GOOD.py -dir_main D:\data -time 2022 32 3 -ftp whu -snx -roti -atx
-          python run_GOOD.py -dir_main D:\data -time 2022 32 3 -ftp whu -obs daily igs site_igs.list 0 24 -nav daily mixed3 igs 0 24 
-             -orbclk igs 0 24 -eop igs 0 24 -obx cod_m -dsb cod -snx -ion all -roti -trop igs site_igs.list -atx
-
-Changes: 06-Apr-2022   fzhou: create the prototype of the scripts for version 1.0
-
- to get help, typD:
-           python run_GOOD.py
- or        python run_GOOD.py -h
-
-"""
 ################################################################################
 # Import Python modules
 import os, sys, pydoc
 import platform
 
-
 __author__ = 'Feng Zhou @ SDUST'
 __date__ = '$DatD: 2022-04-06 07:05:20 (Mon, 06 Apr 2022) $'[7:-21]
-__version__ = '$Version: run_GOOD.py V1.0 $'[10:-2]
+__version__ = '$Version: run_GOOD.py V2.0 $'[10:-2]
 
 
 ################################################################################
-# FUNCTION: batch processing in single point positioning (SPP) mode using GAMPII software
+# FUNCTION: write configuration file for GOOD software
 ################################################################################
-def main_run_GOOD():
-    nArgv = len(sys.argv)
-    print(nArgv)
-    if '-h' in sys.argv or nArgv < 2:
-        pydoc.help(os.path.basename(sys.argv[0]).split('.')[0])
-        return 0
-    elif nArgv >= 2:
-        mainDir = ''
-        for i in range(0, nArgv):
-            if sys.argv[i] == '-dir_main':
-                if sys.argv[i+1][0] == '-':
-                    print('*** ERROR: The full path of main directory is NOT given! Please check it.\n')
-                    return 0
-                else:
-                    mainDir = sys.argv[i+1]
-        if mainDir == '':
-            return 0
+def main_run_GOOD(args):
 
-        sep = ''
-        if 'Windows' in platform.system():
-            sep = '\\'
-        elif 'Linux' or 'Mac' in platform.system():
-            sep = '/'
+    cfgFile = os.path.join(args.mainDir,'gamp_GOOD.cfg')
+    with open(cfgFile,"w") as f_w:
+        line = ''
+        line += '# GAMP II - GOOD (Gnss Observations and prOducts Downloader) options, vers. 2.0\n'
+        line += '\n'
 
-        cfgFile = mainDir + sep + 'gamp_GOOD.cfg'
-        with open(cfgFile,"w") as f_w:
-            line = ''
-            line += '# GAMP II - GOOD (Gnss Observations and prOducts Downloader) options, vers. 2.0\n'
-            line += '\n'
+        line += '# The directories of GNSS observations and products  ---------------------------\n'
+        # to write the setting of main directory
+        line += 'mainDir           = ' + args.mainDir + '                      % The root/main directory of GNSS observations and products\n'
+        
+        # to write the setting of sub-directories
+        line += '  obsDir          = 0  obs                       % The sub-directory of RINEX format observation files\n'
+        line += '  navDir          = 0  nav                       % The sub-directory of RINEX format broadcast ephemeris files\n'
+        line += '  orbDir          = 0  orb                       % The sub-directory of SP3 format precise ephemeris files\n'
+        line += '  clkDir          = 0  clk                       % The sub-directory of RINEX format precise clock files\n'
+        line += '  eopDir          = 0  eop                       % The sub-directory of earth rotation/orientation parameter (EOP) files\n'
+        line += '  obxDir          = 0  obx                       % The sub-directory of MGEX final/rapid and/or CNES real-time ORBEX (ORBit EXchange format) files\n'
+        line += '  biaDir          = 0  bia                       % The sub-directory of CODE/MGEX differential code/signal bias (DCB/DSB), MGEX observable-specific \n'
+        line += '                                                 %   signal bias (OSB), and/or CNES real-time OSB files\n'
+        line += '  snxDir          = 0  snx                       % The sub-directory of SINEX format IGS weekly solution files\n'
+        line += '  ionDir          = 0  ion                       % The sub-directory of CODE/IGS global ionosphere map (GIM) files\n'
+        line += '  ztdDir          = 0  ztd                       % The sub-directory of CODE/IGS tropospheric product files\n'
+        line += '  tblDir          = 0  tables                    % The sub-directory of table files (i.e., ANTEX, ocean tide loading files, etc.) for processing\n'
 
-            line += '# The directories of GNSS observations and products  ---------------------------\n'
-            # to write the setting of main directory
-            line += 'mainDir           = ' + mainDir + '                      % The root/main directory of GNSS observations and products\n'
+        # to write the setting of log file
+        line += '\n'
+        line += '# The directory of log files ---------------------------------------------------\n'
+        line += 'logFile           = 1  ' + os.path.join(args.mainDir,'log','log.txt') + '       % The log file with full path that gives the indications of whether the data downloading is successful or not\n'
 
-            # to write the setting of sub-directories
-            line += '  obsDir          = 0  obs                       % The sub-directory of RINEX format observation files\n'
-            line += '  navDir          = 0  nav                       % The sub-directory of RINEX format broadcast ephemeris files\n'
-            line += '  orbDir          = 0  orb                       % The sub-directory of SP3 format precise ephemeris files\n'
-            line += '  clkDir          = 0  clk                       % The sub-directory of RINEX format precise clock files\n'
-            line += '  eopDir          = 0  eop                       % The sub-directory of earth rotation/orientation parameter (EOP) files\n'
-            line += '  obxDir          = 0  obx                       % The sub-directory of MGEX final/rapid and/or CNES real-time ORBEX (ORBit EXchange format) files\n'
-            line += '  biaDir          = 0  bia                       % The sub-directory of CODE/MGEX differential code/signal bias (DCB/DSB), MGEX observable-specific \n'
-            line += '                                                 %   signal bias (OSB), and/or CNES real-time OSB files\n'
-            line += '  snxDir          = 0  snx                       % The sub-directory of SINEX format IGS weekly solution files\n'
-            line += '  ionDir          = 0  ion                       % The sub-directory of CODE/IGS global ionosphere map (GIM) files\n'
-            line += '  ztdDir          = 0  ztd                       % The sub-directory of CODE/IGS tropospheric product files\n'
-            line += '  tblDir          = 0  tables                    % The sub-directory of table files (i.e., ANTEX, ocean tide loading files, etc.) for processing\n'
+        line += '\n'
+        line += '# The directory of third-party softwares ---------------------------------------\n'
+        line += '3partyDir         = 1  ' + os.path.join(args.mainDir,'thirdParty') + '        % (optional) The directory where third-party softwares (i.e., \'wget\', \'gzip\', \'crx2rnx\' etc) are stored, \n'
 
-            # to write the setting of log file
-            line += '\n'
-            line += '# The directory of log files ---------------------------------------------------\n'
-            line += 'logFile           = 1  ' + mainDir + sep + 'log' + sep + 'log.txt       % The log file with full path that gives the indications of whether the data downloading is successful or not\n'
+        # required time argument
+        # ctime = f'{args.time[0]} {args.time[1]} {args.time[2]}' # explicitly construct string
+        ctime = ' '.join([str(v) for v in args.time]) # use a loop to build string 
+        
+        line += '\n'
+        line += '# Time settings ----------------------------------------------------------------\n'
+        line += 'procTime          = 2  ' + ctime + '               % The setting of start time for processing\n'
 
-            line += '\n'
-            line += '# The directory of third-party softwares ---------------------------------------\n'
-            line += '3partyDir         = 1  ' + mainDir + sep + 'thirdParty' + '        % (optional) The directory where third-party softwares (i.e., \'wget\', \'gzip\', \'crx2rnx\' etc) are stored, \n'
+        line += '\n'
+        line += '# Settings of FTP downloading --------------------------------------------------\n'
+        line += 'minusAdd1day      = 1                            % The setting of the day before and after the current day for precise satellite orbit and clock \n'
+        line += '                                                 %   products downloading\n'
+        line += 'printInfoWget     = 1                            % Printing the information generated by \'wget\'\n'
 
-            for i in range(0, nArgv):
-                if sys.argv[i] == '-time':
-                    if sys.argv[i+1][0] == '-' or sys.argv[i+2][0] == '-' or sys.argv[i+3][0] == '-':
-                        print('*** ERROR: Three items are needed for time setting! Please check it.\n')
-                        return 0
-                    else:
-                        yyyy = sys.argv[i+1]
-                        doy = sys.argv[i+2]
-                        ndays = sys.argv[i+3]
-                        ctime = yyyy + '  ' + doy + '  ' + ndays
-                        
-                        line += '\n'
-                        line += '# Time settings ----------------------------------------------------------------\n'
-                        line += 'procTime          = 2  ' + ctime + '               % The setting of start time for processing\n'
+        # required ftp argument
+        line += '\n'
+        line += '# Handling of FTP downloading --------------------------------------------------\n'
+        line += 'ftpDownloading    = 1  ' + args.ftp + '                     % The setting of the master switch for data downloading\n'
 
-                        line += '\n'
-                        line += '# Settings of FTP downloading --------------------------------------------------\n'
-                        line += 'minusAdd1day      = 1                            % The setting of the day before and after the current day for precise satellite orbit and clock \n'
-                        line += '                                                 %   products downloading\n'
-                        line += 'printInfoWget     = 1                            % Printing the information generated by \'wget\'\n'
+        # optional arguments
+        if args.obs:
+            cobs = ' '.join([str(v) for v in args.obs])
+            line += '  getObs          = 1  ' + cobs + '    % GNSS observation data downloading option\n'
+        if args.nav:
+            cnav = ' '.join([str(v) for v in args.nav])
+            line += '  getNav          = 1  ' + cnav + ' % Various broadcast ephemeris downloading option\n'
+        if args.orbclk:
+            corb = ' '.join([str(v) for v in args.orbclk])
+            line += '  getOrbClk       = 1  ' + corb + '                % Satellite final/rapid/ultra-rapid precise orbit and clock downloading option\n'
+        if args.eop:
+            ceop = ' '.join([str(v) for v in args.eop])
+            line += '  getEop          = 1  ' + ceop + '                % Earth rotation/orientation parameter (ERP/EOP) downloading option\n'
+        if args.obx:
+            line += '  getObx          = 1  ' + args.obx + '                     % ORBEX (ORBit EXchange format) for satellite attitude information downloading option\n'
+        if args.dsb:
+            line += '  getDsb          = 1  ' + args.dsb + '                       % Differential code/signal bias (DCB/DSB) downloading option\n'
+        if args.snx:
+            line += '  getSnx          = 1                                 % IGS weekly SINEX downloading option\n'
+        if args.ion:
+            line += '  getIon          = 1  ' + args.ion + '                       % Global ionosphere map (GIM) downloading option\n'
+        if args.roti:
+            line += '  getRoti         = 1                            % Rate of TEC index (ROTI) downloading option\n'
+        if args.trop:
+            if args.trop[0] == 'all':
+                ctrop = ' '.join([str(v) for v in args.trop])
+            else:
+                ctrop = args.trop[0] + '  ' + os.path.join(args.mainDir,args.trop[1])
+            line += '  getTrp          = 1  ' + ctrop + '                  % CODE/IGS tropospheric product downloading option\n'
+        if args.atx:
+            line += '  getAtx          = 1                            % ANTEX format antenna phase center correction downloading option\n'
 
-            for i in range(0, nArgv):
-                if sys.argv[i] == '-ftp':
-                    if sys.argv[i+1][0] == '-':
-                        print('*** ERROR: The FTP archieve is NOT given! Please check it.\n')
-                        return 0
-                    else:
-                        line += '\n'
-                        line += '# Handling of FTP downloading --------------------------------------------------\n'
-                        line += 'ftpDownloading    = 1  ' + sys.argv[i+1] + '                     % The setting of the master switch for data downloading\n'
-
-            for i in range(0, nArgv):
-                if sys.argv[i] == '-obs':
-                    if sys.argv[i+1][0] == '-' or sys.argv[i+2][0] == '-' or sys.argv[i+3][0] == '-' or sys.argv[i+4][0] == '-' or sys.argv[i+5][0] == '-':
-                        print('*** ERROR: Five items are needed for observation downloading! Please check it.\n')
-                        return 0
-                    else:
-                        cobs = ''
-                        if sys.argv[i+3] == 'all':
-                            cobs = sys.argv[i+1] + '  ' + sys.argv[i+2] + '  ' + sys.argv[i+3] + '  ' + sys.argv[i+4] + '  ' + sys.argv[i+5]
-                        else:
-                            cobs = sys.argv[i+1] + '  ' + sys.argv[i+2] + '  ' + mainDir + sep +  sys.argv[i+3] + '  ' + sys.argv[i+4] + '  ' + sys.argv[i+5]
-                        line += '  getObs          = 1  ' + cobs + '    % GNSS observation data downloading option\n'
-
-            for i in range(0, nArgv):
-                if sys.argv[i] == '-nav':
-                    if sys.argv[i+1][0] == '-' or sys.argv[i+2][0] == '-' or sys.argv[i+3][0] == '-' or sys.argv[i+4][0] == '-' or sys.argv[i+5][0] == '-':
-                        print('*** ERROR: Five items are needed for broadcast ephemeris downloading! Please check it.\n')
-                        return 0
-                    else:
-                        cnav = sys.argv[i+1] + '  ' + sys.argv[i+2] + '  ' + sys.argv[i+3] + '  ' + sys.argv[i+4] + '  ' + sys.argv[i+5]
-                        line += '  getNav          = 1  ' + cnav + ' % Various broadcast ephemeris downloading option\n'
-
-            for i in range(0, nArgv):
-                if sys.argv[i] == '-orbclk':
-                    if sys.argv[i+1][0] == '-' or sys.argv[i+2][0] == '-' or sys.argv[i+3][0] == '-':
-                        print('*** ERROR: Three items are needed for final/rapid/ultra-rapid precise and clock downloading! Please check it.\n')
-                        return 0
-                    else:
-                        corb = sys.argv[i+1] + '  ' + sys.argv[i+2] + '  ' + sys.argv[i+3]
-                        line += '  getOrbClk       = 1  ' + corb + '                % Satellite final/rapid/ultra-rapid precise orbit and clock downloading option\n'
-
-            for i in range(0, nArgv):
-                if sys.argv[i] == '-eop':
-                    if sys.argv[i+1][0] == '-' or sys.argv[i+2][0] == '-' or sys.argv[i+3][0] == '-':
-                        print('*** ERROR: Three items are needed for final/ultra-rapid earth rotation/orientation parameter (ERP/EOP) downloading! Please check it.\n')
-                        return 0
-                    else:
-                        ceop = sys.argv[i+1] + '  ' + sys.argv[i+2] + '  ' + sys.argv[i+3]
-                        line += '  getEop          = 1  ' + ceop + '                % Earth rotation/orientation parameter (ERP/EOP) downloading option\n'
-
-            for i in range(0, nArgv):
-                if sys.argv[i] == '-obx':
-                    if sys.argv[i+1][0] == '-':
-                        print('*** ERROR: One item is needed for final/rapid/real-time ORBEX (ORBit EXchange format) downloading! Please check it.\n')
-                        return 0
-                    else:
-                        line += '  getObx          = 1  ' + sys.argv[i+1] + '                     % ORBEX (ORBit EXchange format) for satellite attitude information downloading option\n'
-
-            for i in range(0, nArgv):
-                if sys.argv[i] == '-dsb':
-                    if sys.argv[i+1][0] == '-':
-                        print('*** ERROR: One item is needed for differential code/signal bias (DCB/DSB) downloading! Please check it.\n')
-                        return 0
-                    else:
-                        line += '  getDsb          = 1  ' + sys.argv[i+1] + '                       % Differential code/signal bias (DCB/DSB) downloading option\n'
-
-            for i in range(0, nArgv):
-                if sys.argv[i] == '-snx':
-                    line += '  getSnx          = 1                                 % IGS weekly SINEX downloading option\n'
-
-            for i in range(0, nArgv):
-                if sys.argv[i] == '-ion':
-                    if sys.argv[i+1][0] == '-':
-                        print('*** ERROR: One item is needed for global ionosphere map (GIM) downloading! Please check it.\n')
-                        return 0
-                    else:
-                        line += '  getIon          = 1  ' + sys.argv[i+1] + '                       % Global ionosphere map (GIM) downloading option\n'
-
-            for i in range(0, nArgv):
-                if sys.argv[i] == '-roti':
-                    line += '  getRoti         = 1                            % Rate of TEC index (ROTI) downloading option\n'
-
-            for i in range(0, nArgv):
-                if sys.argv[i] == '-trop':
-                    if sys.argv[i+1][0] == '-' or sys.argv[i+2][0] == '-':
-                        print('*** ERROR: Two items are needed for tropospheric products downloading! Please check it.\n')
-                        return 0
-                    else:
-                        cobs = ''
-                        if sys.argv[i+2] == 'all':
-                            ctrop = sys.argv[i+1] + '  ' + sys.argv[i+2]
-                        else:
-                            ctrop = sys.argv[i+1] + '  ' + mainDir + sep +  sys.argv[i+2]
-                        line += '  getTrp          = 1  ' + ctrop + '                  % CODE/IGS tropospheric product downloading option\n'
-
-            for i in range(0, nArgv):
-                if sys.argv[i] == '-atx':
-                    line += '  getAtx          = 1                            % ANTEX format antenna phase center correction downloading option\n'
-
-            f_w.write(line)
-
-    else:
-        return 0
+        f_w.write(line)
 
     if 'Windows' in platform.system():
-        bin_GOOD = mainDir + sep + 'run_GAMP_GOOD.exe'
+        bin_GOOD = os.path.join(args.mainDir, 'run_GAMP_GOOD.exe')
     elif 'Linux' or 'Mac' in platform.system():
-        bin_GOOD = mainDir + sep + 'run_GAMP_GOOD'
-    cfgFile = mainDir + sep + 'gamp_GOOD.cfg'
+        bin_GOOD = os.path.join(args.mainDir, 'run_GAMP_GOOD')
     cmd = bin_GOOD + ' ' + cfgFile
     os.system(cmd)
-
 
 ################################################################################
 # Main program
 ################################################################################
 if __name__ == '__main__':
-    main_run_GOOD()
+    import argparse
+    import textwrap
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+        description='write configuration for GOOD and execute',
+        epilog=textwrap.dedent('''\
+            Additional detail for arguments:
+
+                -obs DATA_TYPE SOURCE SITE_LIST START_HOUR NHOURS
+                    DATA_TYPE: daily, hourly, highrate, 30s, 5s, 1s
+                    SOURCE: igs, mgex, igm, cut, ga, hk, ngs, epn, pbo2, pbo3, pbo5
+                    SITE_LIST: all (observation files downloaded in the whole remote directory), or the full path of 
+                        site list (observation files downloaded site-by-site according to the site list file)
+                    START_HOUR: Start hour (00, 01, 02, ...)
+                    NHOURS: the consecutive hours, i.e., '01  3' denotes 01, 02, and 03
+
+                -nav DATA_TYPE NAV_TYPE SOURCE START_HOUR NHOURS
+                    DATA_TYPE: daily, hourly
+                    NAV_TYPE: gps, glo, bds, gal, qzs, irn, mixed3, mixed4, all
+                    SOURCE: igs, dlr, ign, gop, wrd
+                    START_HOUR: Start hour (00, 01, 02, ...)
+                    NHOURS: the consecutive hours, i.e., '01  3' denotes 01, 02, and 03
+            
+            NEED TO ADD TO ADDITIONAL DETAILED HELP:
+            -orbclk, -eop, -ion, -trop
+
+            EXAMPLES:
+
+            download 3 consecutive days of IGS station observations from CDDIS,
+            starting day-of-year 32, year 2022
+                python run_GOOD.py -dir_main D:\data -time 2022 32 3 -ftp cddis -obs daily igs site_igs.list 0 24
+
+            download SINEX, ROTI, and ANTEX from Wuhan
+                python run_GOOD.py -dir_main D:\data -time 2022 32 3 -ftp whu -snx -roti -atx
+        '''
+        ))
+
+    parser.add_argument('-mainDir',required=True,
+        help='The root/main directory of GNSS observations and products storage')
+    parser.add_argument('-time',required=True,
+        type=int, nargs=3, metavar=('YYYY','DOY','NUM_DAYS'),
+        help='time setting, see examples')
+    parser.add_argument('-ftp',required=True,
+        choices=('cddis','whu','ign'),
+        help='FTP archive')
+    parser.add_argument('-obs', nargs=5, 
+        metavar=('DATA_TYPE','SOURCE','SITE_LIST','START_HOUR','NHOURS'),
+        help='GNSS observation data downloading')
+    parser.add_argument('-nav', nargs=5,
+        metavar=('DATA_TYPE','NAV_TYPE', 'SOURCE','START_HOUR','NHOURS'),
+        help='various broadcast ephemeris downloading')
+    parser.add_argument('-orbclk', nargs=3,
+        metavar=('SOURCE','START_HOUR','NHOURS'),
+        help='satellite final/rapid/ultra-rapid precise orbit and clock downloading')
+    parser.add_argument('-eop', nargs=3,
+        metavar=('SOURCE','START_HOUR','NHOURS'),
+        help='Earth rotation/orientation parameter (ERP/EOP) downloading')
+    parser.add_argument('-obx',
+        help='ORBEX (ORBit EXchange format) for satellite attitude information downloading: ' +
+        'final/rapid = cod_m, gfz_m, grg_m, whu_m, all_m; real-time = cnt')
+    parser.add_argument('-dsb',
+        help='Differential code/signal bias (DCB/DSB) downloading',
+        choices=('cod','cas','all'))
+    parser.add_argument('-snx', action='store_true',
+        help='IGS weekly SINEX downloading option')
+    parser.add_argument('-ion',
+        help='Global ionosphere map (GIM) downloading')
+    parser.add_argument('-roti', action='store_true',
+        help='Rate of TEC index (ROTI) downloading')
+    parser.add_argument('-trop', nargs=2,
+        metavar=('SOURCE','SITE_LIST'),
+        help='CODE/IGS tropospheric product downloading')
+    parser.add_argument('-atx', action='store_true',
+        help='ANTEX format antenna phase center correction downloading')
+
+    args = parser.parse_args()
+    #print(args.__dict__)
+
+    main_run_GOOD(args)
